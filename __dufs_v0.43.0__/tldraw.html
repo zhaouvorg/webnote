@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vite React App</title>
+  <script type="module" crossorigin src="/webnote/__dufs_v0.43.0__/tldraw-dist/assets/index-4cfb9243.js"></script>
+  <link rel="stylesheet" href="/webnote/__dufs_v0.43.0__/tldraw-dist/assets/index-392a92ce.css">
+</head>
+<body>
+  <div id="root"></div>
+  <input type="file" onchange="handleFiles(this)" style="display:none">
+  <script>
+
+
+globalThis.sendiframemessage=()=>window.parent.postMessage({type:'test',data:"iframe message"}, "*");
+
+var handle={}
+globalThis.handle=handle;
+
+window.addEventListener("message", (event) => {
+    // 检查消息来源是否为父页面
+    // if (event.origin !== window.location.origin) return;
+
+    // 显示接收到的消息
+    console.log("Message from Parent, type:", event.data.type);
+    handle[event.data.type](event.data.data);
+});
+
+handle.test=(e)=>console.log(e)
+
+handle.setsvg=(e)=>globalThis.loadBundleSvg(e)
+
+handle.setup=function(){
+    let inject_load=function(){
+        globalThis.click1=()=>{
+            saveBundleSvg().then(e=>{
+                window.parent.postMessage({type:'tldraw_edit_done',data:e}, "*")
+            })
+        }
+        globalThis.click2=()=>{window.parent.postMessage({type:'tldraw_edit_cancel',data:''}, "*")}
+    }
+    let try_active=()=>{
+        if (typeof globalThis.click1 == 'undefined') {
+            // console.log('tried!')
+            setTimeout(try_active,1)
+        } else {
+            inject_load()
+        }
+    }
+    try_active()
+}
+
+
+function handleFiles(fileInput) {
+    const fileList = fileInput.files;
+    var file = fileList[0];
+    if (file) {
+        console.log(file.name);
+        console.log(file.size);
+        console.log(file.type);
+        var reader = new FileReader();
+        reader.readAsText(file, "UTF-8");
+        reader.onload = function (evt) {
+            globalThis.loadBundleSvg(evt.target.result)
+        }
+    }
+}
+
+handle.localsetup=function(){
+    let inject_load=function(){
+        globalThis.click1=()=>{
+            saveBundleSvg().then(e=>{
+                var data = new Blob([e], {type: 'text/plain'});
+                data = window.URL.createObjectURL(data)
+                var clickEvent = new MouseEvent("click", {
+                    "view": window,
+                    "bubbles": true,
+                    "cancelable": false
+                });
+                var a = document.createElement('a');
+                a.href = data;
+                a.download = 'draw.svg';
+                a.textContent = 'Download file!';
+                a.dispatchEvent(clickEvent);
+            })
+        }
+        globalThis.click2=()=>{
+            document.querySelector('input[type=file]').click()
+        }
+    }
+    let try_active=()=>{
+        if (typeof globalThis.click1 == 'undefined') {
+            // console.log('tried!')
+            setTimeout(try_active,1)
+        } else {
+            inject_load()
+        }
+    }
+    try_active()
+}
+handle.localsetup()
+
+
+  </script>
+</body>
+</html>

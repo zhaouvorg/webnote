@@ -1,0 +1,92 @@
+{
+  "_from": "@tldraw/assets@3.5.1",
+  "_id": "@tldraw/assets@3.5.1",
+  "_inBundle": false,
+  "_integrity": "sha512-P27o5f2wp9fdo9TX90C3y85rm0EeaH9Rx2wTf0YZ2UMBbbuRqlBzds+H/CrWPTzWjxZ5T4Eert64r2eT4hXtXg==",
+  "_location": "/@tldraw/assets",
+  "_phantomChildren": {},
+  "_requested": {
+    "type": "version",
+    "registry": true,
+    "raw": "@tldraw/assets@3.5.1",
+    "name": "@tldraw/assets",
+    "escapedName": "@tldraw%2fassets",
+    "scope": "@tldraw",
+    "rawSpec": "3.5.1",
+    "saveSpec": null,
+    "fetchSpec": "3.5.1"
+  },
+  "_requiredBy": [
+    "#USER",
+    "/"
+  ],
+  "_resolved": "https://registry.npmmirror.com/@tldraw/assets/-/assets-3.5.1.tgz",
+  "_shasum": "29be301d35a9f974af4ca05e177615b5ea8928ad",
+  "_spec": "@tldraw/assets@3.5.1",
+  "_where": "/home/zhaouv/e/git/testgit/tldraw-inline/tsx-vite-test",
+  "author": {
+    "name": "tldraw Inc.",
+    "email": "hello@tldraw.com"
+  },
+  "bugs": {
+    "url": "https://github.com/tldraw/tldraw/issues"
+  },
+  "bundleDependencies": false,
+  "dependencies": {
+    "@tldraw/utils": "3.5.1"
+  },
+  "deprecated": false,
+  "description": "A tiny little drawing app (assets).",
+  "devDependencies": {
+    "lazyrepo": "0.0.0-alpha.27",
+    "ts-node-dev": "^1.1.8",
+    "typescript": "~5.4.2"
+  },
+  "files": [
+    "embed-icons",
+    "icons",
+    "fonts",
+    "translations",
+    "imports.js",
+    "imports.d.ts",
+    "imports.vite.js",
+    "imports.vite.d.ts",
+    "selfHosted.js",
+    "selfHosted.d.ts",
+    "types.d.ts",
+    "urls.js",
+    "urls.d.ts",
+    "utils.js",
+    "utils.d.ts"
+  ],
+  "homepage": "https://tldraw.dev",
+  "jest": {
+    "preset": "../../internal/config/jest/node/jest-preset.js",
+    "setupFiles": [
+      "raf/polyfill"
+    ],
+    "moduleNameMapper": {
+      "^~(.*)": "<rootDir>/src/$1"
+    }
+  },
+  "keywords": [
+    "tldraw",
+    "drawing",
+    "app",
+    "development",
+    "whiteboard",
+    "canvas",
+    "infinite"
+  ],
+  "license": "SEE LICENSE IN LICENSE.md",
+  "name": "@tldraw/assets",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tldraw/tldraw.git"
+  },
+  "scripts": {
+    "lint": "yarn run -T tsx ../../internal/scripts/lint.ts",
+    "pack-tarball": "yarn pack"
+  },
+  "version": "3.5.1"
+}

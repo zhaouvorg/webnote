@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset='utf-8'>
+    <title>Vditor+Tldraw+dufs</title>
+    <meta name='viewport' content='width=device-width, initial-scale=1'>
+    <link rel="stylesheet" href="/webnote/__dufs_v0.43.0__/vditor-package/dist/index.css" />
+    <link rel="stylesheet" href="/webnote/__dufs_v0.43.0__/tldraw-dist/assets/index-392a92ce.css">
+</head>
+<body>
+    <div id="root"></div>
+    <div id="vditor"></div>
+    <div id="fullcover" style="z-index: 99999;position: fixed;top: 0;left: 0;width: 100%;height: 100%;background-color: white;"></div>
+    <script type="module" crossorigin src="/webnote/__dufs_v0.43.0__/tldraw-dist/assets/index-4cfb9243.js"></script>
+    <script src="/webnote/__dufs_v0.43.0__/vditor-package/dist/index.min.js"></script>
+<script type="module">
+window.addEventListener("message", (event) => {
+    // if (event.origin !== window.location.origin) return;
+    console.log("Message from Parent, type:", event.data.type);
+    if (event.data.type=='setup') {
+        globalThis.sourceBaseUrl=event.data.data.sourceBaseUrl;
+        globalThis.sourceContent=event.data.data.sourceContent;
+        globalThis.fetch_put=function(url,body,resfunc){
+            window.parent.postMessage({ type: 'mdeditor-iframe-fetch_put', data:{url, body} }, '*');
+            setTimeout(() => {
+                resfunc()
+            }, 0);
+        }
+    }
+});
+window.parent.postMessage({ type: 'mdeditor-iframe-ready' }, '*');
+globalThis.fetch_put=function(url,body,resfunc){
+    fetch(url, body).then(resfunc)
+}
+let Vditor_load=()=>{
+    let getBaseUrl=function(){
+        if (typeof globalThis.sourceBaseUrl == 'undefined') {
+            return location.href.split('?')[0];
+        }
+        return globalThis.sourceBaseUrl
+    }
+    function generateTimestamp() {
+        const now = new Date();
+
+        // 获取年、月、日、小时、分钟、秒
+        const year = now.getFullYear(); // 四位年份
+        const month = String(now.getMonth() + 1).padStart(2, '0'); // 月份从 0 开始，需要加 1
+        const day = String(now.getDate()).padStart(2, '0'); // 日期
+        const hours = String(now.getHours()).padStart(2, '0'); // 小时
+        const minutes = String(now.getMinutes()).padStart(2, '0'); // 分钟
+        const seconds = String(now.getSeconds()).padStart(2, '0'); // 秒
+
+        // 拼接成所需的格式
+        const timestamp = `${year}${month}${day}_${hours}${minutes}${seconds}`;
+        return timestamp;
+    }
+    const setup_func = ()=>{
+        let localsetup=function(){
+            let inject_load=function(){
+                globalThis.click1=()=>{
+                    saveBundleSvg().then(e=>{
+                        show.vditor()
+                        let svgstr=e.replaceAll('\n','')
+                        // globalThis.usingDrawBoardMod=='file' 'raw'
+                        if (globalThis.usingDrawBoardElement==null && globalThis.usingDrawBoardMod=='raw') {
+                            vditor.insertValue(svgstr);
+                        }
+                        if (globalThis.usingDrawBoardElement!=null && globalThis.usingDrawBoardMod=='raw') {
+                            let cn=globalThis.usingDrawBoardElement
+                            globalThis.usingDrawBoardElement=null
+
+                            let selection = window.getSelection(); 
+                            let newRange = document.createRange();
+                            newRange.selectNodeContents(cn);
+                            selection.removeAllRanges();
+                            selection.addRange(newRange);
+
+                            console.log(e)
+                            vditor.deleteValue()
+                            vditor.insertValue('')
+                            setTimeout(()=>{
+                                vditor.insertValue(svgstr)
+                            },0)
+                            // vditor.updateValue(e)
+                        }
+                        if (globalThis.usingDrawBoardElement==null && globalThis.usingDrawBoardMod=='file'){
+                            let savename=generateTimestamp()+'.svg'
+                            let selectstr=window.getSelection().toString()
+                            if (/\w+\.svg/i.exec(selectstr)) {
+                                savename=selectstr
+                            }
+                            let svgbaseurl=getBaseUrl().replace(/[^\/]*$/,'')
+
+                            console.log(`<img drawinline="0.1" src="./${savename}">`);
+                            
+                            globalThis.fetch_put(svgbaseurl+savename, {
+                                method: "PUT",
+                                body: svgstr,
+                            },res=>{
+                                console.log(`svg saved at ./${savename}!`)
+                                vditor.deleteValue()
+                                vditor.insertValue('')
+                                setTimeout(()=>{
+                                    vditor.insertValue(`&lt;img drawinline="0.1" src="./${savename}">`);
+                                },0)
+                            })
+                        } 
+                        if (globalThis.usingDrawBoardElement!=null && globalThis.usingDrawBoardMod=='file'){
+                            let cn=globalThis.usingDrawBoardElement
+                            globalThis.usingDrawBoardElement=null
+                            let svgurl=getBaseUrl().replace(/[^\/]*$/,'')+/src="([^"]+)"/.exec(cn.textContent)[1]
+                            globalThis.fetch_put(svgurl, {
+                                method: "PUT",
+                                body: svgstr,
+                            },res=>{})
+                        } 
+                        
+                    })
+                }
+                globalThis.click2=()=>{show.vditor()}
+            }
+            let try_load_clickfunc=()=>{
+                if (typeof globalThis.click1 == 'undefined') {
+                    // console.log('tried!')
+                    setTimeout(try_load_clickfunc,1)
+                } else {
+                    inject_load()
+                }
+            }
+            try_load_clickfunc()
+        }
+        localsetup()
+
+        fullcover.style.display='none'
+        let raw_Md2VditorIRDOM = vditor.vditor.lute.Md2VditorIRDOM
+        vditor.vditor.lute.Md2VditorIRDOM=function(md){
+            let ret= raw_Md2VditorIRDOM.call(vditor.vditor.lute,md)
+            console.log('Md2VditorIRDOM',md,ret)
+            if(globalThis.sourceBaseUrl)ret=ret.replace(/(['"])\.\//g,'$1'+globalThis.sourceBaseUrl.replace(/[^\/]*$/,''))
+            return ret
+        }
+        if (globalThis.sourceContent) {
+            globalThis.vditor.setValue(globalThis.sourceContent)
+        }
+        function setToFullscreen() {
+            // document.querySelector("button[data-type='fullscreen']").click()
+            // vditor.vditor.toolbar.elements.fullscreen.children[0].click()
+            if(globalThis?.vditor?.vditor?.element?.className==null)return;
+            let vv=globalThis.vditor.vditor
+            if (vv.element.className.includes("vditor--fullscreen"))return;
+            vv.element.style.zIndex = vv.options.fullscreen.index.toString();
+            document.body.style.overflow = "hidden";
+            vv.element.classList.add("vditor--fullscreen");
+            Object.keys(vv.toolbar.elements).forEach((key) => {
+                const svgElement = vv.toolbar.elements[key].firstChild;
+                if (svgElement) {
+                    svgElement.className = svgElement.className.replace("__n", "__s");
+                }
+            });
+            if (vv.counter) {
+                vv.counter.element.className = vv.counter.element.className.replace("__n", "__s");
+            }
+        }
+        setToFullscreen()
+    }
+    const vditor = new Vditor("vditor", {
+        // mode:'wysiwyg',
+        cdn:'/webnote/__dufs_v0.43.0__/vditor-package',
+        upload: {
+            url: '/image',
+            accept: 'image/*',
+            handler(files) {
+                console.log(files)
+                console.log(files[0].name)
+                let picbaseurl=getBaseUrl().replace(/[^\/]*$/,'')
+                // let reader = new FileReader();
+                // reader.readAsBinaryString(files[0]);
+                // reader.onloadend = () => {
+                //     console.log(reader)
+                //     // console.log(reader.result)
+                // }
+
+                let savename=files[0].name
+                let selectstr=window.getSelection().toString()
+                
+                if (/\w+\.(png|jpg)/i.exec(selectstr)) {
+                    savename=selectstr
+                }else if(savename=='image.png'){
+                    savename=generateTimestamp()+'.png'
+                }
+
+                globalThis.fetch_put(picbaseurl+savename, {
+                    method: "PUT",
+                    body: files[0],
+                },res=>{
+                    console.log(`pic saved at ./${savename}!`)
+                    vditor.insertValue(`![](./${savename})`);
+                })
+                
+            }
+        },
+        input:(str)=>{
+            globalThis.fetch_put(getBaseUrl(), {
+                method: "PUT",
+                body: str,
+            },res=>console.log('saved!'))
+        },
+        // select:(str)=>{
+        //     console.log(str)
+        // },
+        link: {
+            isOpen: true,
+            click:(bom) => {
+                let open=bom.textContent
+                if (/\.md$/.exec(open)) {
+                    open=open+'?md&edit'
+                }
+                if(globalThis.sourceBaseUrl){
+                    open=open.replace(/^\.\//,globalThis.sourceBaseUrl.replace(/[^\/]*$/,'')).replace(/^\.\.\//,globalThis.sourceBaseUrl.replace(/[^\/]*$/,'../'))
+                }
+                window.open(open)
+            },
+        },
+        after:()=>setup_func(),
+        toolbar: [
+            {
+                name: 'tldraw',
+                tipPosition: 'nw',
+                tip: '画板',
+                className: 'right',
+                icon: '<svg xmlns="http://www.w3.org/2000/svg" direction="ltr" viewBox="250 150 250 250" stroke-linecap="round" stroke-linejoin="round"><defs></defs><g transform="matrix(1, 0, 0, 1, 280, 280)" opacity="1"><g transform="scale(1)"><path d="M-7.3021,-4.0367 T-6.0778,-6.2147 -3.258,-12.185 -0.735,-19.6215 1.966,-27.4254 6.1116,-36.1913 10.4871,-44.0235 14.3995,-50.5921 18.5457,-56.9354 24.5089,-62.0844 33.3906,-62.3366 40.1605,-57.2513 42.8291,-49.6753 44.3272,-40.7384 45.1678,-32.1549 45.9401,-24.6938 46.5447,-17.5998 47.3296,-9.5848 48.2313,-1.632 49.0178,5.4455 50.3741,12.5178 53.5995,19.2512 52.5852,23.7131 50.6673,20.6962 52.9493,12.0487 54.4528,3.0187 55.7908,-6.2836 57.2265,-14.5684 58.9393,-21.9916 62.0341,-29.213 67.4848,-36.1241 74.7101,-40.5789 82.5127,-40.441 89.3587,-35.8708 94.4724,-28.3284 97.9781,-19.9384 95.3721,-14.5135 95.1883,-15.0566 103.8621,-16.9404 112.5114,-14.3947 118.6204,-8.697 124.1652,-1.9597 127.9067,-1.6767 130.7661,-8.0737 135.4071,-13.7882 140.7022,-19.3047 146.361,-24.3017 152.2942,-28.4463 158.7723,-31.6469 168.3187,-34.009 177.8834,-35.2967 181.1823,-35.5229 A7.8232,7.8232 0 0 1 182.5577,-19.9371 T177.2738,-19.4455 167.7986,-17.7347 159.433,-13.4076 151.2645,-5.4509 144.5877,3.8874 139.6128,12.112 132.6999,18.6101 124.5462,20.6609 117.3916,17.1239 111.1538,11.4525 105.1313,5.4062 97.8813,3.5263 89.2147,1.889 83.1992,-4.8838 80.7518,-12.9335 80.007,-20.6984 78.421,-21.4526 75.49,-15.1781 74.0341,-7.9436 72.9366,0.4254 71.9061,10.4199 70.498,20.2952 68.2708,28.7657 64.4235,35.959 57.3467,40.2006 49.4466,40.1385 43.6116,36.6814 38.7581,31.4058 34.8345,25.0527 32.3228,17.926 30.8936,10.257 29.917,2.2632 29.0733,-5.4521 28.4155,-13.1559 27.8238,-20.5271 27.1678,-27.6923 26.4168,-35.5488 25.0458,-44.3261 27.749,-46.5276 29.4207,-40.8934 25.4203,-34.6637 21.519,-28.0422 17.6513,-20.2764 14.3828,-11.703 11.3941,-3.8549 8.4954,1.8414 7.3021,4.0367 A8.3437,8.3437 0 0 1 -7.3021,-4.0367 Z" stroke-linecap="round"></path></g></g></svg>',
+                click () {
+                    let ce=window.getSelection()
+                    let cn=ce.focusNode
+                    globalThis.usingDrawBoardElement=null
+                    if (cn) {
+                        if(cn.nodeName=='#text'){cn=cn.parentNode}
+                        if (cn.nodeName=='CODE' && /^\<svg/.exec(cn.textContent)) {
+                            console.log(cn)
+                            globalThis.usingDrawBoardElement=cn
+                            globalThis.loadBundleSvg(cn.textContent)
+                        }
+                    }
+                    globalThis.usingDrawBoardMod='raw'
+                    show.tldraw()
+                },
+            },
+            {
+                hotkey: 'F4',
+                name: 'tldraw-file',
+                tipPosition: 'nw',
+                tip: '画板-文件',
+                className: 'right',
+                icon: '<svg xmlns="http://www.w3.org/2000/svg" direction="ltr" viewBox="250 150 250 250" stroke-linecap="round" stroke-linejoin="round"><defs></defs><g transform="matrix(1.5, 0, 0, 1.5,314.4, 190.1333)" opacity="1"><g transform="scale(1)"><path d="M0,0 Q0,3.1601 0,4.7492 T0,7.9325 0,11.1233 0,14.3184 0,17.7596 0,21.5788 0,25.4804 0.1208,29.183 0.3074,32.6563 0.4089,35.8842 0.4641,38.7346 0.4942,41.3796 0.5105,43.9128 0.5194,46.3853 0.5242,48.7039 0.5269,50.9365 0.5283,53.2455 0.5291,55.5959 0.5295,57.969 0.8945,60.3543 1.581,63.1112 2.1984,65.8284 2.776,68.0362 3.3341,69.9668 3.7609,71.6235 3.993,73.2544 4.1193,74.8712 4.188,76.1155 4.2254,77.1572 4.2457,78.2096 4.2568,79.27 4.2628,80.2116 4.2661,81.0887 4.2679,82.0514 4.2688,82.94 4.2694,83.6673 4.2697,84.4278 4.2698,85.5711 4.2699,87.0435 4.2699,88.574 4.27,90.3802 4.27,92.3364 4.27,94.1301 4.27,95.8355 4.27,97.3697 4.27,98.69 4.27,99.773 4.27,100.6061 4.27,101.3033 4.3908,101.8034 4.8214,102.0754 5.6643,102.2234 6.8525,102.304 8.4702,102.3477 10.6863,102.3716 13.351,102.3845 16.2598,102.3916 19.5454,102.2746 23.4007,102.0901 27.5659,101.8666 32.0206,101.3802 36.6328,100.874 40.9658,100.4754 44.903,100.0147 48.3832,99.6432 51.25,99.3203 53.5391,99.0237 55.3909,98.8624 56.763,98.7747 57.8743,98.7269 58.8436,98.701 59.7357,98.6869 60.8275,98.6792 62.0302,98.675 63.2932,98.6727 64.5891,98.6715 65.7797,98.6708 66.913,98.6704 68.0174,98.6702 69.1039,98.6701 70.1805,98.6701 71.1311,98.67 71.8921,98.67 72.5501,98.67 73.1497,98.67 73.7198,98.67 74.2739,98.67 74.8171,98.67 75.3565,98.67 75.8939,98.67 76.551,98.67 77.2733,98.67 77.9079,98.67 78.4971,98.67 79.0616,98.67 79.6103,98.5469 80.1528,98.2359 80.6919,97.702 81.2268,96.9259 81.7618,95.8972 82.2968,94.364 82.8295,92.3125 83.6049,89.8581 84.5147,86.6989 85.3744,83.1563 86.2069,79.893 86.7829,76.7817 87.0962,73.7508 87.2666,70.7636 87.3594,67.6794 87.4098,64.7864 87.4373,62.1181 87.3291,59.5722 87.1471,57.0929 87.0481,54.6497 86.9942,52.1053 86.9649,49.1389 86.949,45.9428 86.9403,42.9889 86.9356,40.2876 86.6914,37.7237 86.1937,35.2345 85.7999,32.9069 85.5856,31.0341 85.3482,29.4089 85.0982,27.916 84.9622,26.3743 84.8883,24.9268 84.848,23.7746 84.8261,22.6621 84.8142,21.569 84.8077,20.4888 84.8042,19.4154 84.8023,18.3436 84.8012,17.2749 84.8007,16.3288 84.8004,15.5701 84.6794,14.9157 84.3696,14.3157 83.8362,13.7454 83.1813,13.1935 82.4602,12.5284 81.4615,11.6787 80.1886,10.7308 78.7665,9.4856 77.2633,8.0785 75.5928,6.7066 73.8314,5.2307 72.2667,3.8191 70.9298,2.5632 69.5938,1.5152 68.2583,0.5803 66.923,-0.2931 65.5901,-1.0099 64.3794,-1.6438 63.112,-2.3534 61.8138,-3.1043 60.4988,-3.8775 59.0538,-4.7838 57.6613,-5.6416 56.4181,-6.3522 55.377,-6.9828 54.5667,-7.5675 53.8819,-8.0064 53.2677,-8.2452 52.5688,-8.375 51.7007,-8.4457 50.7428,-8.4841 49.736,-8.5051 48.7004,-8.5164 47.5283,-8.5226 46.2842,-8.526 45.0009,-8.5278 43.5732,-8.5288 42.067,-8.5294 40.6388,-8.5296 39.1323,-8.5298 37.4623,-8.5299 35.8242,-8.5299 34.2035,-8.53 32.7131,-8.53 31.4143,-8.53 30.2222,-8.53 29.2089,-8.53 28.4137,-8.53 27.7394,-8.53 27.0078,-8.53 26.1219,-8.53 25.2751,-8.53 24.4497,-8.53 23.515,-8.53 22.6418,-8.53 21.8019,-8.53 20.9803,-8.53 20.2893,-8.53 19.5486,-8.53 18.66,-8.53 17.8119,-8.53 16.9857,-8.53 16.1714,-8.53 15.4845,-8.53 14.8691,-8.53 14.1696,-8.53 13.3011,-8.53 12.343,-8.4092 11.457,-8.2226 10.6102,-8.1211 9.6639,-7.945 8.6612,-7.7284 7.7509,-7.6106 7.0141,-7.5465 6.3693,-7.5116 5.7745,-7.4926 5.0862,-7.4823 4.3469,-7.4767 3.7031,-7.4736 2.988,-7.472 1.9903,-7.4711 0.7012,-7.4704 L0,-7.47 " stroke-linecap="round" fill="none" stroke="#1d1d1d" stroke-width="4.5" stroke-dasharray="none" stroke-dashoffset="0"></path></g></g><g transform="matrix(1, 0, 0, 1, 280, 280)" opacity="1"><g transform="scale(1)"><path d="M-7.3021,-4.0367 T-6.0778,-6.2147 -3.258,-12.185 -0.735,-19.6215 1.966,-27.4254 6.1116,-36.1913 10.4871,-44.0235 14.3995,-50.5921 18.5457,-56.9354 24.5089,-62.0844 33.3906,-62.3366 40.1605,-57.2513 42.8291,-49.6753 44.3272,-40.7384 45.1678,-32.1549 45.9401,-24.6938 46.5447,-17.5998 47.3296,-9.5848 48.2313,-1.632 49.0178,5.4455 50.3741,12.5178 53.5995,19.2512 52.5852,23.7131 50.6673,20.6962 52.9493,12.0487 54.4528,3.0187 55.7908,-6.2836 57.2265,-14.5684 58.9393,-21.9916 62.0341,-29.213 67.4848,-36.1241 74.7101,-40.5789 82.5127,-40.441 89.3587,-35.8708 94.4724,-28.3284 97.9781,-19.9384 95.3721,-14.5135 95.1883,-15.0566 103.8621,-16.9404 112.5114,-14.3947 118.6204,-8.697 124.1652,-1.9597 127.9067,-1.6767 130.7661,-8.0737 135.4071,-13.7882 140.7022,-19.3047 146.361,-24.3017 152.2942,-28.4463 158.7723,-31.6469 168.3187,-34.009 177.8834,-35.2967 181.1823,-35.5229 A7.8232,7.8232 0 0 1 182.5577,-19.9371 T177.2738,-19.4455 167.7986,-17.7347 159.433,-13.4076 151.2645,-5.4509 144.5877,3.8874 139.6128,12.112 132.6999,18.6101 124.5462,20.6609 117.3916,17.1239 111.1538,11.4525 105.1313,5.4062 97.8813,3.5263 89.2147,1.889 83.1992,-4.8838 80.7518,-12.9335 80.007,-20.6984 78.421,-21.4526 75.49,-15.1781 74.0341,-7.9436 72.9366,0.4254 71.9061,10.4199 70.498,20.2952 68.2708,28.7657 64.4235,35.959 57.3467,40.2006 49.4466,40.1385 43.6116,36.6814 38.7581,31.4058 34.8345,25.0527 32.3228,17.926 30.8936,10.257 29.917,2.2632 29.0733,-5.4521 28.4155,-13.1559 27.8238,-20.5271 27.1678,-27.6923 26.4168,-35.5488 25.0458,-44.3261 27.749,-46.5276 29.4207,-40.8934 25.4203,-34.6637 21.519,-28.0422 17.6513,-20.2764 14.3828,-11.703 11.3941,-3.8549 8.4954,1.8414 7.3021,4.0367 A8.3437,8.3437 0 0 1 -7.3021,-4.0367Z" stroke-linecap="round"></path></g></g></svg>',
+                click () {
+                    let ce=window.getSelection()
+                    let cn=ce.focusNode
+                    globalThis.usingDrawBoardElement=null
+                    // <code data-type="html-block"><img drawinline="0.1" src="./svg3.svg"></code>
+                    if (cn) {
+                        if(cn.nodeName=='#text'){cn=cn.parentNode}
+                        if (cn.nodeName=='CODE' && /^\<img drawinline/.exec(cn.textContent)) {
+                            console.log(cn)
+                            globalThis.usingDrawBoardElement=cn
+                            fetch(getBaseUrl().replace(/[^\/]*$/,'')+/src="([^"]+)"/.exec(cn.textContent)[1]).then(res=>res.text()).then(t=>{
+                                // console.log(t)
+                                globalThis.loadBundleSvg(t)
+                            })
+                        }
+                    }
+                    globalThis.usingDrawBoardMod='file'
+                    show.tldraw()
+                },
+            },
+            "undo",
+            "redo",
+            "bold",
+            "italic",
+            "strike",
+            // "|",
+            // "insert-before",
+            // "insert-after",
+            "upload",
+            "table",
+            "outline",
+            "edit-mode",
+            "both",
+            {
+                name: "more",
+                toolbar: [
+                    // "fullscreen",
+
+                    "emoji",
+                    // "headings",
+                    // "link",
+                    // "list",
+                    // "ordered-list",
+                    "check",
+                    "outdent",
+                    "indent",
+
+                    "quote",
+                    "line",
+                    "code",
+                    "inline-code",
+
+                    "record",
+
+                    "code-theme",
+                    "content-theme",
+                    "export",
+                    "preview",
+                    // "devtools",
+                    // "info",
+                    // "help",
+                ],
+            },
+        ],
+        toolbarConfig: {
+            hide: false,
+            pin: true,
+        },
+    })
+    globalThis.vditor=vditor
+    globalThis.show={
+        tldraw(){vditor.vditor.element.style.zIndex=-2},
+        vditor(){vditor.vditor.element.style.zIndex=90}
+    }
+    globalThis.usingDrawBoardElement=null
+    globalThis.usingDrawBoardMod='raw'
+}
+let try_active=()=>{
+    if (typeof Vditor == 'undefined') {
+        // console.log('tried!')
+        setTimeout(try_active,1)
+    } else {
+        Vditor_load()
+    }
+}
+try_active()
+</script>
+</body>
+</html>
